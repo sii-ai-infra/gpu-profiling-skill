@@ -1,6 +1,9 @@
 ---
 name: ncu-report-skill
-description: Profile CUDA kernels with Nsight Compute on H200 / sm90 and B200 / sm_100. Use when the user asks to profile a kernel, analyze its performance, diagnose bottlenecks, read an ncu report, or write an optimization plan — including variants in Chinese ("profile 一下", "为什么慢", "ncu 报告").
+description: Profile CUDA kernels with Nsight Compute on H200 / sm90 and B200 / sm_100. Use when the user asks to profile a kernel, analyze its performance, diagnose bottlenecks, read an ncu report, or write an optimization plan, including when the request is phrased in a language other than English. Scope: NVIDIA GPU operators written in CUDA C++ or Triton. Not for Ascend C or Triton-Ascend kernels.
+vendor: [nvidia]
+languages: ["*"]
+architectures: [sm90, sm100]
 ---
 
 # Skill: CUDA Kernel Profiling (B200 / H200 / Nsight Compute)
