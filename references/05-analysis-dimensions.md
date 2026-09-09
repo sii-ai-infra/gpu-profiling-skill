@@ -7,7 +7,7 @@ For each dimension this doc describes:
 - **What you're answering**
 - **Which metrics to read** (B200 / sm_100 names)
 - **How to read them** (what's "normal", what's "bad")
-- **Which `helpers/` to run**
+- **Which `scripts/` to run**
 
 ---
 

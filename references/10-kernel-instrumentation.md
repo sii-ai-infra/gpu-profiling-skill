@@ -17,9 +17,9 @@ from final performance measurements unless the instrumentation overhead is the
 thing being studied.
 
 Minimal copy-paste snippets live at
-[`../helpers/instrumentation_snippet.cu`](../helpers/instrumentation_snippet.cu).
+[`../scripts/instrumentation_snippet.cu`](../scripts/instrumentation_snippet.cu).
 Use them with a harness based on
-[`../helpers/harness_template.cu`](../helpers/harness_template.cu).
+[`../scripts/harness_template.cu`](../scripts/harness_template.cu).
 
 ---
 

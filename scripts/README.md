@@ -14,8 +14,8 @@ Reusable code for profiling harnesses and report analysis. See `../SKILL.md` for
 
 ```bash
 cd profile/<run_name>/harness/
-cp /path/to/skills/kernel-profiling/helpers/harness_template.cu my_kernel_harness.cu
-cp /path/to/skills/kernel-profiling/helpers/safetensors_loader.h .
+cp /path/to/skills/kernel-profiling/scripts/harness_template.cu my_kernel_harness.cu
+cp /path/to/skills/kernel-profiling/scripts/safetensors_loader.h .
 # optional: copy/paste selected probes from instrumentation_snippet.cu
 # edit my_kernel_harness.cu to include your kernel + fill in main()
 nvcc -O2 -std=c++17 -lineinfo -gencode=arch=compute_100,code=sm_100 \
