@@ -2,7 +2,7 @@
 // instrumentation_snippet.cu — minimal device-side timing snippets.
 //
 // Copy the pieces you need into a profiling harness based on
-// `helpers/harness_template.cu`. Keep probes behind KERNEL_PROFILING and always
+// `scripts/harness_template.cu`. Keep probes behind KERNEL_PROFILING and always
 // validate conclusions with an uninstrumented NCU report.
 //
 // Compile the harness with:

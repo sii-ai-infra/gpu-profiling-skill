@@ -1,4 +1,4 @@
-# ncu-report-skill
+# gpu-profiling-skill
 > [!IMPORTANT]
 > This skill is maintained as a standalone submodule of
 > [Kernel Design Agents (KDA)](https://github.com/mit-han-lab/kernel-design-agents)
@@ -18,7 +18,7 @@ The skill is self-contained: reference docs, reusable helper scripts (harness te
 ```
 .
 ├── SKILL.md                          ← skill entry point (with YAML frontmatter)
-├── helpers/                          ← reusable code
+├── scripts/                          ← reusable code
 │   ├── harness_template.cu           ← standalone profiling harness template
 │   ├── safetensors_loader.h          ← header-only safetensors reader (no deps)
 │   ├── list_flashinfer_workloads.py  ← browse flashinfer-trace datasets
@@ -28,7 +28,7 @@ The skill is self-contained: reference docs, reusable helper scripts (harness te
 │   ├── ncu_utils.py                  ← shared Python helpers, B200-compatible key metric list
 │   ├── instrumentation_snippet.cu    ← copy-paste device-side timing probes for harnesses
 │   └── README.md
-├── reference/                        ← detailed reference docs
+├── references/                        ← detailed reference docs
 │   ├── 00-directory-layout.md        ← profile/ directory conventions (read first)
 │   ├── 01-workflow.md                ← end-to-end profiling checklist
 │   ├── 02-harness-guide.md           ← how to build a standalone profiling harness
@@ -62,48 +62,48 @@ Keeps the skill version-controlled and easy to update; edits in the clone are pi
 
 ```bash
 # Clone somewhere stable
-git clone git@github.com:DongyunZou/ncu-report-skill.git ~/workspace/ncu-report-skill
+git clone git@github.com:sii-ai-infra/gpu-profiling-skill.git ~/workspace/gpu-profiling-skill
 
 # User-level install: make the skill available in every project
 mkdir -p ~/.claude/skills
-ln -s ~/workspace/ncu-report-skill ~/.claude/skills/ncu-report-skill
+ln -s ~/workspace/gpu-profiling-skill ~/.claude/skills/gpu-profiling-skill
 
 # Or project-level install: scope to one repo
 cd /path/to/other-repo
 mkdir -p .claude/skills
-ln -s ~/workspace/ncu-report-skill .claude/skills/ncu-report-skill
+ln -s ~/workspace/gpu-profiling-skill .claude/skills/gpu-profiling-skill
 ```
 
-Pull updates with `cd ~/workspace/ncu-report-skill && git pull`. The symlinks pick up the new content automatically.
+Pull updates with `cd ~/workspace/gpu-profiling-skill && git pull`. The symlinks pick up the new content automatically.
 
 ### Option 2 — Copy into place
 
 If you prefer a static copy over a symlink:
 
 ```bash
-git clone git@github.com:DongyunZou/ncu-report-skill.git /tmp/ncu
+git clone git@github.com:sii-ai-infra/gpu-profiling-skill.git /tmp/gpu-profiling-skill
 mkdir -p ~/.claude/skills
-cp -r /tmp/ncu ~/.claude/skills/ncu-report-skill
+cp -r /tmp/gpu-profiling-skill ~/.claude/skills/gpu-profiling-skill
 ```
 
 ### Option 3 — Git submodule (for a project-level install committed alongside the repo)
 
 ```bash
 cd /path/to/other-repo
-git submodule add git@github.com:DongyunZou/ncu-report-skill.git .claude/skills/ncu-report-skill
-git commit -m "Add ncu-report-skill as a submodule"
+git submodule add git@github.com:sii-ai-infra/gpu-profiling-skill.git .claude/skills/gpu-profiling-skill
+git commit -m "Add gpu-profiling-skill as a submodule"
 ```
 
 ---
 
 ## How Claude uses this skill
 
-Once installed at `~/.claude/skills/ncu-report-skill/` (or project-level), Claude Code will:
+Once installed at `~/.claude/skills/gpu-profiling-skill/` (or project-level), Claude Code will:
 
 1. Advertise the skill's name + description in the system reminder of new conversations.
-2. Let the user invoke it manually via `/ncu-report-skill` or let the model invoke it with the Skill tool when the conversation matches the `description` triggers.
+2. Let the user invoke it manually via `/gpu-profiling-skill` or let the model invoke it with the Skill tool when the conversation matches the `description` triggers.
 
-When invoked, Claude reads `SKILL.md`, follows its workflow (phases 0 → 6 in `reference/01-workflow.md`), and uses the helper scripts in `helpers/` as needed.
+When invoked, Claude reads `SKILL.md`, follows its workflow (phases 0 → 6 in `references/01-workflow.md`), and uses the helper scripts in `scripts/` as needed.
 
 ---
 
@@ -119,27 +119,27 @@ export PYTHONPATH=$PYTHONPATH:/usr/local/cuda-13.2/nsight-compute-2026.1.0/extra
 export RUN=/path/to/your/profile/myrun
 
 # Extract key metrics from one or more reports
-python3 ~/.claude/skills/ncu-report-skill/helpers/analyze_reports.py \
+python3 ~/.claude/skills/gpu-profiling-skill/scripts/analyze_reports.py \
     --run-dir "$RUN" \
     --report "$RUN/reports/full_<tag>.ncu-rep" --tag <tag>
 
 # Per-line stall hotspots (requires a source-level .ncu-rep)
-python3 ~/.claude/skills/ncu-report-skill/helpers/extract_stall_hotspots.py \
+python3 ~/.claude/skills/gpu-profiling-skill/scripts/extract_stall_hotspots.py \
     --run-dir "$RUN" \
     --report "$RUN/reports/source_<tag>.ncu-rep" --tag <tag>
 
 # ASCII PM-sampling timelines
-python3 ~/.claude/skills/ncu-report-skill/helpers/plot_timeline.py \
+python3 ~/.claude/skills/gpu-profiling-skill/scripts/plot_timeline.py \
     --run-dir "$RUN" \
     --report "$RUN/reports/full_<tag>.ncu-rep" --tag <tag>
 
 # Browse a flashinfer-trace dataset to pick workload shapes
 export FIB_DATASET_PATH=/path/to/flashinfer-trace
-python3 ~/.claude/skills/ncu-report-skill/helpers/list_flashinfer_workloads.py \
+python3 ~/.claude/skills/gpu-profiling-skill/scripts/list_flashinfer_workloads.py \
     --definition <your_definition_name>
 ```
 
-The C++ harness template + safetensors loader live under `helpers/`; copy them into your profile run's `harness/` directory and fill in the kernel body. See `reference/02-harness-guide.md` for details.
+The C++ harness template + safetensors loader live under `scripts/`; copy them into your profile run's `harness/` directory and fill in the kernel body. See `references/02-harness-guide.md` for details.
 
 ---
 
@@ -148,9 +148,9 @@ The C++ harness template + safetensors loader live under `helpers/`; copy them i
 - CUDA Toolkit with `nvcc` (tested with 13.2)
 - Nsight Compute CLI `ncu` (tested with 2026.1)
 - The `ncu_report` Python module (ships with Nsight Compute under `extras/python/`)
-- An NVIDIA GPU with permission to access performance counters (see `reference/09-common-issues.md` if `ncu` reports `ERR_NVGPUCTRPERM`)
+- An NVIDIA GPU with permission to access performance counters (see `references/09-common-issues.md` if `ncu` reports `ERR_NVGPUCTRPERM`)
 
-The skill is optimized for B200 / sm_100 metric names, but the workflow and helpers work on any CUDA GPU Nsight Compute supports. Metric names may differ on older GPUs (A100, H100) — see `reference/08-b200-metric-names.md` for guidance.
+The skill is optimized for B200 / sm_100 metric names, but the workflow and helpers work on any CUDA GPU Nsight Compute supports. Metric names may differ on older GPUs (A100, H100) — see `references/08-b200-metric-names.md` for guidance.
 
 ---
 

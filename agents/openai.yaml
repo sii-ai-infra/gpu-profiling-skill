@@ -1,0 +1,4 @@
+interface:
+  display_name: "GPU Profiling (Nsight Compute)"
+  short_description: "Profile and diagnose CUDA kernels on H200 / B200 with Nsight Compute."
+  default_prompt: "Profile this CUDA kernel with Nsight Compute, work through the analysis dimensions, match the pattern to the diagnosis playbook, and write an evidence-backed optimization plan."
