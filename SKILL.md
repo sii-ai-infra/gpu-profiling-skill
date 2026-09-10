@@ -95,5 +95,12 @@ Most under-performing CUDA kernels are under-performing for exactly one reason t
 
 ## Related skills
 
-- [`cuda-kernel-general-guidelines.md`](cuda-kernel-general-guidelines.md) — architecture-neutral CUDA kernel principles and checklists. Use it when proposing *new* kernel designs; use this skill when diagnosing *existing* kernels.
-- [`blackwell-optimization-guidelines.md`](blackwell-optimization-guidelines.md) — Blackwell / B200 / sm_100a-specific principles and checklists. Use after the general checklist when the target is Blackwell.
+- **`cuda-optimization`** (repo `cuda-skill`) — the judgement layer for CUDA C++ kernels: the sixteen general principles as a routing table, the fix directions each one offers, which kernel types *legitimately* violate which principle, and which principles shift weight on Blackwell. Use it when proposing *new* kernel designs or when deciding whether a warning this skill surfaced is a real problem; use **this** skill when diagnosing an *existing* kernel from a report.
+- **`KernelWiki`** — measurements, thresholds and metric semantics. Anything of the form "what is the ideal value of X" is a fact and lives there, not here.
+
+> The three guideline documents that used to sit in this repo's root
+> (`cuda-kernel-general-guidelines.md`, `blackwell-optimization-guidelines.md`,
+> `blackwell-cuda-programming.md`) were split along the same line in 2026-09:
+> **judgement → `cuda-skill`, facts → KernelWiki, diagnosis → this repo's
+> `references/05` and `06`.** Nothing was dropped; the move is tracked unit by
+> unit in `evals/e9_cuda_guidelines.yaml` in the pipeline repo.
