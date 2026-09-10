@@ -20,6 +20,40 @@ Most kernels will match 2-4 patterns simultaneously. **Rank them by magnitude** 
 
 ---
 
+## Metric → pattern reverse index
+
+The patterns below are organised **pattern-first**: you suspect something, you
+look it up. The other direction happens more often in practice -- you are staring
+at a metric that looks wrong and want to know what it implicates. That is what
+this table is for.
+
+| Metric | Reads as | Pattern |
+|---|---|---|
+| `launch__waves_per_multiprocessor` | < 0.5 -> SMs idle | [A](#pattern-a--small-grid--sm-idle) |
+| per-SM active-cycle spread | max/min far apart -> imbalance | [B](#pattern-b--tail-effect-variable-length-inputs) |
+| `l1tex__average_t_sectors_per_request_pipe_lsu_mem_global_op_ld.ratio` | >> 4 -> uncoalesced loads | [C](#pattern-c--uncoalesced-global-loads) |
+| `smsp__sass_average_data_bytes_per_sector_mem_global_op_st.ratio` | low -> sparse writes | [D](#pattern-d--sparse-writes-low-store-efficiency) |
+| `smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio` | high -> waiting on memory | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+| **`smsp__warps_eligible.avg.per_cycle_active`** | **~0 -> every resident warp is stalled** | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+| **`sm__inst_executed.avg.per_cycle_active`** | **low IPC with healthy occupancy -> latency, not throughput** | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+| `sm__pipe_tensor_cycles_active.avg.pct_of_peak_sustained_elapsed` | low on a GEMM -> not on tensor cores | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) |
+| `lts__t_sectors_op_atom.sum` / `op_red.sum` | high -> atomic contention | [G](#pattern-g--atomics-contention) |
+| `l1tex__data_pipe_lsu_wavefronts.avg.pct_of_peak_sustained_elapsed` | high -> bank conflicts | [H](#pattern-h--shared-memory-bank-conflicts) |
+| **`smsp__inst_executed_op_shared_ld.sum`** | **the denominator: wavefronts / shared-ld = conflict factor** | [H](#pattern-h--shared-memory-bank-conflicts) |
+| `smsp__pcsamp_warps_issue_stalled_barrier` | high -> sync overhead | [I](#pattern-i--synchronization-overhead) |
+| `sm__maximum_warps_per_active_cycle_pct` vs achieved | gap -> occupancy limited | [J](#pattern-j--low-achieved-vs-theoretical-occupancy) |
+| `launch__occupancy_limit_*` | names *which* resource limits it | [J](#pattern-j--low-achieved-vs-theoretical-occupancy) |
+| `smsp__sass_inst_executed_op_local_ld.sum` / `_st.sum` | non-zero -> register spill | [K](#pattern-k--register-spill) |
+| `sm__pipe_fp64_cycles_active.avg.pct_of_peak_sustained_active` | non-zero unintentionally -> FP64 leak | [L](#pattern-l--fp64-used-unintentionally) |
+| `sm__throughput` timeline shape | sawtooth -> no overlap | [M](#pattern-m--pipeline-bubbles-no-computememory-overlap) |
+| `smsp__thread_inst_executed_per_inst_executed.ratio` | << 32 -> divergence | [N](#pattern-n--warp-divergence) |
+| **`gpu__time_duration.sum`** | **the denominator for ranking -- see below** | all |
+
+**Bold rows are new**; the rest already appear in the pattern bodies. See
+[`05-analysis-dimensions.md`](05-analysis-dimensions.md) for how to collect each.
+
+---
+
 ## Pattern A — Small grid / SM idle
 
 **Signals:**
@@ -125,6 +159,8 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 ## Pattern E — Latency-bound (long-scoreboard-dominated)
 
 **Signals:**
+- `smsp__warps_eligible.avg.per_cycle_active` near zero — **the most direct statement of the problem**: warps are resident but none is ready to issue. Occupancy can look fine and this still be ~0.
+- `sm__inst_executed.avg.per_cycle_active` (IPC) low while occupancy is healthy — the SM has warps and is not issuing from them. Compare against `sm__inst_issued` to separate "not issuing" from "issuing and replaying".
 - `smsp__pcsamp_warps_issue_stalled_long_scoreboard / smsp__pcsamp_sample_count > 0.40`.
 - `smsp__average_warps_issue_stalled_long_scoreboard_per_issue_active.ratio > 3`.
 - `dram__bytes_read.sum.pct_of_peak_sustained_elapsed < 10%` (→ not DRAM-bandwidth-bound).
@@ -199,6 +235,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 ## Pattern H — Shared-memory bank conflicts
 
 **Signals:**
+- **`l1tex__data_pipe_lsu_wavefronts...` alone does not give you the conflict factor** — it is a numerator. Divide it by `smsp__inst_executed_op_shared_ld.sum` (+ `_op_shared_st.sum`): a conflict-free access is 1 wavefront per instruction, an N-way conflict is N. Reporting the wavefront count without its denominator says "there is shared traffic", not "there are conflicts".
 - `l1tex__data_pipe_lsu_wavefronts.avg.pct_of_peak_sustained_elapsed` high for shared-mem ops.
 - `short_scoreboard` stalls concentrated on shared-memory load lines.
 - Access pattern has regular strides that align to bank boundaries.
@@ -326,6 +363,12 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 ---
 
 ## Ranking template for the final report
+
+
+**Rank in absolute time, not in percentages.** Every `Est. Speedup: X%` NCU prints
+is a fraction *of this kernel*. Multiply it by `gpu__time_duration.sum` before
+comparing patterns across kernels -- a 60% win on a 3 us kernel loses to a 5% win
+on a 900 us one, and the percentage view hides that completely.
 
 When you hand back an optimization plan, rank by `(expected speedup) × (effort ratio)`. NCU's `Est. Speedup` is your best estimator.
 
