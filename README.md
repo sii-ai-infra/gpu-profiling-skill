@@ -28,22 +28,24 @@ The skill is self-contained: reference docs, reusable helper scripts (harness te
 │   ├── ncu_utils.py                  ← shared Python helpers, B200-compatible key metric list
 │   ├── instrumentation_snippet.cu    ← copy-paste device-side timing probes for harnesses
 │   └── README.md
-├── references/                        ← detailed reference docs
-│   ├── 00-directory-layout.md        ← profile/ directory conventions (read first)
-│   ├── 01-workflow.md                ← end-to-end profiling checklist
-│   ├── 02-harness-guide.md           ← how to build a standalone profiling harness
-│   ├── 03-collection.md              ← ncu command recipes
-│   ├── 04-python-api.md              ← ncu_report Python API patterns
-│   ├── 05-analysis-dimensions.md     ← six analysis dimensions
-│   ├── 06-diagnosis-playbook.md      ← pattern → cause → fix
-│   ├── 07-report-template.md         ← final report structure
-│   ├── 08-b200-metric-names.md       ← sm_100 metric name reference
-│   ├── 09-common-issues.md           ← permissions, PM sampling, JIT toolchains, etc.
-│   └── 10-kernel-instrumentation.md  ← device-side timing/counter probes and suitable scenarios
-├── cuda-kernel-general-guidelines.md ← companion reference: general CUDA kernel principles
-├── blackwell-optimization-guidelines.md ← companion reference: Blackwell-specific principles
-└── blackwell-cuda-programming.md     ← compatibility index pointing to the two split docs
+└── references/                        ← detailed reference docs
+    ├── 00-directory-layout.md        ← profile/ directory conventions (read first)
+    ├── 01-workflow.md                ← end-to-end profiling checklist
+    ├── 02-harness-guide.md           ← how to build a standalone profiling harness
+    ├── 03-collection.md              ← ncu command recipes
+    ├── 04-python-api.md              ← ncu_report Python API patterns
+    ├── 05-analysis-dimensions.md     ← six analysis dimensions
+    ├── 06-diagnosis-playbook.md      ← pattern → cause → fix
+    ├── 07-report-template.md         ← final report structure
+    ├── 08-b200-metric-names.md       ← sm_100 metric name reference
+    ├── 09-common-issues.md           ← permissions, PM sampling, JIT toolchains, etc.
+    └── 10-kernel-instrumentation.md  ← device-side timing/counter probes and suitable scenarios
 ```
+
+> The three CUDA guideline documents that used to sit here were split in
+> 2026-09: judgement went to the **`cuda-optimization`** skill (repo
+> `cuda-skill`), measurements and thresholds to **KernelWiki**, and the
+> metric-level diagnosis into `references/05` and `references/06` of this repo.
 
 ---
 

@@ -1,6 +1,6 @@
 # Diagnosis Playbook — Pattern → Cause → Fix
 
-For each observed NCU signal, what does it typically mean, and what's the first fix to try? This synthesizes the general CUDA principles (`cuda-kernel-general-guidelines.md`) and Blackwell-specific principles (`blackwell-optimization-guidelines.md`) with the profiling signals.
+For each observed NCU signal, what does it typically mean, and what's the first fix to try? This maps profiling signals to causes. The *principles* behind the fixes -- and, more importantly, which kernel types legitimately violate them -- live in the `cuda-optimization` skill (repo `cuda-skill`); the measured values and thresholds live in KernelWiki.
 
 Read this after you've gathered the metrics (via [`05-analysis-dimensions.md`](05-analysis-dimensions.md)) — here you translate metrics into diagnoses and fix directions.
 
@@ -143,7 +143,7 @@ A single reading is ambiguous in these two cases; the pair is not.
 - LLM decode (batch=1, query_len=1) is fundamentally small. Split-K over KV length is the standard mitigation.
 - Final reduction stages of a multi-level reduction are naturally small; fuse them into the producing kernel.
 
-**Cross-ref:** General CUDA principle 1 (`cuda-kernel-general-guidelines.md` at the repo root), plus Blackwell-specific launch/2CTA notes when targeting B200.
+**Cross-ref:** `cuda-optimization` principle 1 (occupancy / waves) -- see its `references/fix-directions.md` for the fix menu and `references/legitimate-violations.md` for the kernel types where a low reading is correct. Blackwell launch/2CTA notes: `references/blackwell-shifts.md`.
 
 ---
 
@@ -170,7 +170,7 @@ A single reading is ambiguous in these two cases; the pair is not.
 - Short kernels (< 10 µs) where partial-wave cost is absolute-small.
 - Workloads where you already pre-sort / pre-pack.
 
-**Cross-ref:** Blackwell principle 11.
+**Cross-ref:** `cuda-optimization` principle 11 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -270,7 +270,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 - Non-matrix workloads (reduction, sort, element-wise) — tensor cores don't help.
 - Small matrices (M, N, K < 32) — tensor-core tiles are too coarse.
 
-**Cross-ref:** Blackwell principle 10; the Blackwell doc's section on tcgen05 has PTX examples.
+**Cross-ref:** `cuda-optimization` principle 10; the tcgen05 PTX itself is in KernelWiki (`wiki/nvidia/hardware/tcgen05-mma.md`, `tmem.md`, `languages/ptx-sm100.md`).
 
 ---
 
@@ -295,7 +295,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 **Exceptions:**
 - NCCL-style communication — atomics are fundamental there.
 
-**Cross-ref:** Blackwell principle 12.
+**Cross-ref:** `cuda-optimization` principle 12 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -319,7 +319,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 - Broadcast reads (all lanes read same address) are conflict-free.
 - Low shared-mem access volume — don't bother.
 
-**Cross-ref:** Blackwell principle 4.
+**Cross-ref:** `cuda-optimization` principle 4 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -338,7 +338,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 **Deeper fixes:**
 - Warp-specialized execution: producer warps and consumer warps with mbarrier instead of `__syncthreads`.
 
-**Cross-ref:** Blackwell principle 16.
+**Cross-ref:** `cuda-optimization` principle 16 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -374,7 +374,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 **Exceptions:**
 - Large fused kernels (FlashAttention) accept some spill in exchange for larger savings upstream.
 
-**Cross-ref:** Blackwell principle 6.
+**Cross-ref:** `cuda-optimization` principle 6 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -387,7 +387,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 
 **First-line fix:** add `f` suffix to all literals: `1.0f`, `0.5f`, `3.14f`. Add `__expf` / `__logf` / `__sinf` variants for transcendentals.
 
-**Cross-ref:** Blackwell principle 8.
+**Cross-ref:** `cuda-optimization` principle 8 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -402,9 +402,9 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 **First-line fix:** double-buffer. Use two shared-memory tiles; while computing on tile A, load tile B. `__syncthreads` between phases.
 
 **Deeper fixes:**
-- Multi-stage pipeline (3-4 stages on Blackwell — see Blackwell principle 15). Use `cp.async` / TMA for async loads.
+- Multi-stage pipeline (3-4 stages on Blackwell — see KernelWiki `wiki/nvidia/techniques/pipeline-stages.md` for stage-count selection). Use `cp.async` / TMA for async loads.
 
-**Cross-ref:** Blackwell principle 15.
+**Cross-ref:** `cuda-optimization` principle 15 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
@@ -425,7 +425,7 @@ If `K < 8`: consider batching multiple iterations' results into a vectorized wri
 - Tree reductions in warps (last few steps have half / quarter / ... active). Use `__shfl_down_sync` to handle cleanly.
 - Boundary handling (a few warps at tensor edge) — not worth fighting.
 
-**Cross-ref:** Blackwell principle 5.
+**Cross-ref:** `cuda-optimization` principle 5 (`references/fix-directions.md` for the fix menu, `references/legitimate-violations.md` for the kernel types where this reading is correct); `references/blackwell-shifts.md` for how B200 changes its weight.
 
 ---
 
