@@ -24,6 +24,9 @@
   R9 路由表  references/ 非空时，router 必须至少链到其中一份 ——
              「该读哪份」这件事要写在 router 里，不能靠文件名排序去猜
 
+  --check-vendored  各 skill 仓里 vendored 的本文件副本必须与本仓一致 ——
+                    参数外置之后，「改了哪份副本」才是真正的漂移面
+
 ⚠️ 它判的是**形态**，判不了内容对不对。内容要人读，或者交给
 score_skill_routing.py / score_knowledge_reachability.py。
 """
@@ -35,18 +38,69 @@ import sys
 import tempfile
 from pathlib import Path
 
-CELLS = (("nvidia", "cuda-cpp"), ("nvidia", "triton"),
-         ("ascend", "ascendc"), ("ascend", "triton-ascend"))
-
-ROOT_ALLOWED = {
-    "README.md", "SKILL.md", "LICENSE", "CLAUDE.md", "AGENTS.md",
-    ".gitignore", ".gitmodules", ".git", ".github",
-    "agents", "references", "scripts", "evals", "examples", "skills", "external",
+# ═══════════════════════════════════════════════════════════════════════
+# 规则参数 —— 要调阈值或白名单改这里，不要去改下面的判断逻辑
+# ═══════════════════════════════════════════════════════════════════════
+# 13 §5.0 说要「像 cannbot 那样把阈值外置成 rules.yaml」。**照抄会让情况更糟**：
+# 他们的闸只有一份（tests/lib/），外置就是把 1 个文件变成 2 个、同步面不变；
+# 我们这份是 **vendored 进每个 skill 仓的**（今天 8 份副本，字节相同），
+# 外置成 YAML 等于把同步面从 8 变成 16，而且没有任何东西在看它们一致。
+#
+# 所以这里做的是**同一个目的的另一种实现**：
+#   ① 所有可调项集中在下面这个 RULES 字典 —— cannbot 那句
+#      "edit this rather than hacking the code" 的实质就达到了；
+#   ② 真需要按仓改阈值时，放一份 skill_rules.yaml 在本文件旁边即可覆盖
+#      （PyYAML 缺失就跳过并说出来，不静默）；
+#   ③ 顺手补上今天真正缺的那道闸：`--check-vendored` 断言各仓的副本一致。
+#      **没有这一条，"外置"只是把漂移换了个位置。**
+RULES = {
+    "cells": [["nvidia", "cuda-cpp"], ["nvidia", "triton"],
+              ["ascend", "ascendc"], ["ascend", "triton-ascend"]],
+    "root_allowed": [
+        "README.md", "SKILL.md", "LICENSE", "CLAUDE.md", "AGENTS.md",
+        ".gitignore", ".gitmodules", ".git", ".github",
+        "agents", "references", "scripts", "evals", "examples", "skills", "external",
+    ],
+    "banned_dirs": {"reference": "references", "helpers": "scripts"},
+    "router_max_lines": 300,      # R7 —— E7c 的形态判据
+    "reference_max_lines": 200,   # R7
 }
-BANNED_DIRS = {"reference": "references", "helpers": "scripts"}
 
-ROUTER_MAX = 300
-REFERENCE_MAX = 200
+
+def _load_overrides() -> None:
+    """可选：本文件旁边的 skill_rules.yaml 覆盖 RULES 里的同名键。
+
+    缺 PyYAML 或缺文件都不算错，但**要说出来**——一个静默失效的覆盖机制
+    比没有覆盖机制更坏。
+    """
+    path = Path(__file__).with_name("skill_rules.yaml")
+    if not path.is_file():
+        return
+    try:
+        import yaml
+    except ImportError:
+        print(f"warning: 有 {path.name} 但没装 PyYAML，按内置 RULES 跑", file=sys.stderr)
+        return
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:                       # noqa: BLE001
+        print(f"warning: {path.name} 解析失败（{exc}），按内置 RULES 跑", file=sys.stderr)
+        return
+    unknown = set(data) - set(RULES)
+    if unknown:
+        print(f"warning: {path.name} 里有 RULES 不认识的键：{sorted(unknown)}", file=sys.stderr)
+    for k in set(data) & set(RULES):
+        RULES[k] = data[k]
+        print(f"note: {path.name} 覆盖 {k} = {data[k]!r}", file=sys.stderr)
+
+
+_load_overrides()
+
+CELLS = tuple(tuple(c) for c in RULES["cells"])
+ROOT_ALLOWED = set(RULES["root_allowed"])
+BANNED_DIRS = dict(RULES["banned_dirs"])
+ROUTER_MAX = int(RULES["router_max_lines"])
+REFERENCE_MAX = int(RULES["reference_max_lines"])
 
 
 def axes(skill_md: Path) -> dict | None:
@@ -248,6 +302,22 @@ def run_selftest() -> int:
         (cross / "SKILL.md").write_text(_FM.format(n="p", v="ascend", l='"*"'), encoding="utf-8")
         checks.append(("跨格仓（languages:*）不误报", not check(cross)[0]))
 
+        # V1：vendored 副本漂了要被抓到
+        vend = Path(td) / "vend"
+        (vend / "skills" / "s1" / "scripts").mkdir(parents=True)
+        (vend / "skills" / "s2" / "scripts").mkdir(parents=True)
+        me = Path(__file__).resolve()
+        (vend / "skills" / "s1" / "scripts" / me.name).write_bytes(me.read_bytes())
+        (vend / "skills" / "s2" / "scripts" / me.name).write_bytes(me.read_bytes() + b"# drift\n")
+        vb = check_vendored(vend, verbose=False)
+        checks.append(("V1 vendored 副本漂移被抓到",
+                       len(vb) == 1 and "s2" in vb[0]))
+
+        # V1 的另一半：一份都没有时不许报成绿
+        empty = Path(td) / "vend_empty"
+        empty.mkdir()
+        checks.append(("V1 没有副本时不误报为不一致", check_vendored(empty, verbose=False) == []))
+
     bad = 0
     for label, ok_ in checks:
         print(f"  {'✅' if ok_ else '🔴'} {label:<30} {'正对照命中' if ok_ else '**没有命中——这条判定是坏的**'}")
@@ -256,16 +326,50 @@ def run_selftest() -> int:
     return 1 if bad else 0
 
 
+def check_vendored(root: Path, verbose: bool = True) -> list[str]:
+    """各 skill 仓里 vendored 的本文件副本，必须与本仓这一份逐字节相同。
+
+    参数集中到 RULES 之后，「改哪一份副本」就成了唯一的漂移面。
+    今天 8 份副本字节相同，但**没有任何东西在看**——所以补这一条。
+
+    ⚠️ 它只看得见**已 checkout 的 submodule**。submodule 没初始化时
+    副本数是 0，那不叫「全都一致」——所以下面会把看到几份说出来，
+    别让「0 份不一致」被读成绿灯。
+    """
+    me = Path(__file__).resolve()
+    mine = me.read_bytes()
+    seen, bad = [], []
+    for cp in sorted(root.glob("skills/*/scripts/check_skill_layout.py")):
+        if cp.resolve() == me:
+            continue
+        seen.append(cp)
+        if cp.read_bytes() != mine:
+            bad.append(f"V1 {cp.relative_to(root)} 与本仓的 scripts/{me.name} 不一致 —— "
+                       f"闸的副本漂了，两边的规则参数可能已经不是一套")
+    if verbose:
+        print(f"vendored 副本：看到 {len(seen)} 份"
+              + ("（submodule 没初始化？）" if not seen else ""))
+        for b in bad:
+            print(f"  ❌ {b}")
+        if seen and not bad:
+            print("  ✅ 全部与本仓一致")
+    return bad
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("roots", nargs="*", type=Path, default=None)
     ap.add_argument("--strict", action="store_true", help="warn 也算失败")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--check-vendored", action="store_true",
+                    help="断言各 skill 仓里的本文件副本与本仓一致")
     args = ap.parse_args()
     if args.selftest:
         return run_selftest()
     roots = args.roots or [Path(__file__).resolve().parents[1]]
+    if args.check_vendored:
+        return 1 if check_vendored(roots[0].resolve()) else 0
     return max(report(r.resolve(), args.strict) for r in roots)
 
 
