@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "knowledge": {
+    "repository": "https://github.com/sii-ai-infra/KernelWiki-private.git",
+    "revision": "a3d9020e4e3dac7c681a39ea56c51cfaa47bcc0c",
+    "root_env": "KERNELWIKI_ROOT"
+  }
+}

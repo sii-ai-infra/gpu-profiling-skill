@@ -1,15 +1,7 @@
 # gpu-profiling-skill
-> [!IMPORTANT]
-> This skill is maintained as a standalone submodule of
-> [Kernel Design Agents (KDA)](https://github.com/mit-han-lab/kernel-design-agents)
-> for easy installation.
->
-> For bug reports, feature requests, and discussions, please use the main KDA repository:
-> https://github.com/mit-han-lab/kernel-design-agents
+This repository maintains the `gpu-profiling` skill used by kernel-opt-pipeline for H200/B200 profiling. It includes references and reusable collection/analysis helpers. General CUDA design advice is maintained in cuda-skill; hardware facts are in the pinned KernelWiki dependency.
 
-A Claude Code skill for profiling CUDA kernels with Nsight Compute on NVIDIA B200 (sm_100). Covers the full workflow: build a standalone harness, run `ncu`, parse reports with the Python API, walk through six analysis dimensions, match patterns to a diagnosis playbook, and write an evidence-backed optimization report.
-
-The skill is self-contained: reference docs, reusable helper scripts (harness template, safetensors loader, report-analysis Python), plus companion CUDA/Blackwell programming references.
+Start with [SKILL.md](SKILL.md) and the [reference index](references/index.md). Configure installation, task and knowledge roots through [runtime.md](references/runtime.md). Existing `.ncu-rep` files can be analyzed without launching a GPU workload. Report maintenance issues in this repository.
 
 ---
 

@@ -1,0 +1,14 @@
+# Release contents; evidence/evals and maintenance checks are excluded.
+SKILL.md
+references/
+agents/
+DEPENDENCIES.json
+scripts/README.md
+scripts/analyze_reports.py
+scripts/extract_stall_hotspots.py
+scripts/harness_template.cu
+scripts/instrumentation_snippet.cu
+scripts/list_flashinfer_workloads.py
+scripts/ncu_utils.py
+scripts/plot_timeline.py
+scripts/safetensors_loader.h

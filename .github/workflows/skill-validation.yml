@@ -1,0 +1,47 @@
+name: Skill validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify the shared checker version
+        run: sha256sum -c scripts/checkers.sha256
+      - name: Layout and reachable references
+        run: python3 scripts/check_skill_layout.py . --strict
+      - name: Local links (knowledge is a separate check)
+        run: python3 scripts/check_wiki_anchors.py . --strict --local-only
+      - name: Content rubric controls
+        run: python3 scripts/run_skill_content_evals.py --selfcheck .
+  knowledge:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require read access to the private knowledge repository
+        env:
+          READ_TOKEN: ${{ secrets.KERNELWIKI_READ_TOKEN }}
+        run: test -n "$READ_TOKEN" || { echo 'Configure KERNELWIKI_READ_TOKEN for the manual knowledge check'; exit 1; }
+      - name: Read the pinned dependency
+        id: dependency
+        run: python3 -c 'import json,os; d=json.load(open("DEPENDENCIES.json"))["knowledge"]; open(os.environ["GITHUB_OUTPUT"],"a").write("revision="+d["revision"]+"\n")'
+      - uses: actions/checkout@v4
+        with:
+          repository: sii-ai-infra/KernelWiki-private
+          ref: ${{ steps.dependency.outputs.revision }}
+          token: ${{ secrets.KERNELWIKI_READ_TOKEN }}
+          path: external/kernelwiki
+      - name: Check the complete dependency contract
+        run: python3 scripts/check_wiki_anchors.py . --strict --wiki-root external/kernelwiki
