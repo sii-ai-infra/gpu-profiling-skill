@@ -47,10 +47,77 @@ this table is for.
 | `sm__pipe_fp64_cycles_active.avg.pct_of_peak_sustained_active` | non-zero unintentionally -> FP64 leak | [L](#pattern-l--fp64-used-unintentionally) |
 | `sm__throughput` timeline shape | sawtooth -> no overlap | [M](#pattern-m--pipeline-bubbles-no-computememory-overlap) |
 | `smsp__thread_inst_executed_per_inst_executed.ratio` | << 32 -> divergence | [N](#pattern-n--warp-divergence) |
+| **`sm__inst_executed_pipe_lsu.avg.pct_of_peak_sustained_elapsed`** | **near peak -> the LSU issue rate is the limit; vectorising the accesses cuts the instruction count** | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
 | **`gpu__time_duration.sum`** | **the denominator for ranking -- see below** | all |
 
 **Bold rows are new**; the rest already appear in the pattern bodies. See
 [`05-analysis-dimensions.md`](05-analysis-dimensions.md) for how to collect each.
+
+---
+
+## NCU section / SASS / stall reason → pattern
+
+The reverse index above is keyed by **metric name**. In practice a second
+entry point is just as common: NCU tells you to open a *section*, or you are
+staring at the **instruction mix** or a **stall reason** rather than a counter.
+Those never resolve to a metric name, so the table above cannot route them.
+
+### Report section → what it decides
+
+| `--section` | What you are looking for | Pattern |
+|---|---|---|
+| `ComputeWorkloadAnalysis` | pipeline utilisation spread — one pipe saturated while others idle | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) · [L](#pattern-l--fp64-used-unintentionally) |
+| `InstructionStats` | the executed instruction mix (see next table) | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) · [L](#pattern-l--fp64-used-unintentionally) |
+| `MemoryWorkloadAnalysis` | shared-memory wavefront count, L1/L2 hit rates | [H](#pattern-h--shared-memory-bank-conflicts) · [C](#pattern-c--uncoalesced-global-loads) |
+| `WarpStateStats` | stall-reason breakdown (see third table) | [E](#pattern-e--latency-bound-long-scoreboard-dominated) · [I](#pattern-i--synchronization-overhead) |
+| `SourceCounters` (Source page) | which *lines* the stall samples land on | [I](#pattern-i--synchronization-overhead) · [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+
+### Instruction mix → what it decides
+
+The mix answers questions a counter cannot: *which code path did the compiler
+actually emit?*
+
+| Seen in `InstructionStats` | Reads as | Pattern |
+|---|---|---|
+| lots of `FFMA`, no `HMMA` / `DMMA` | fell back to the CUDA-core path, tensor cores unused | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) |
+| `sm__inst_executed_pipe_tensor.sum` == 0 | **no tensor instruction was issued at all** — stronger than a low utilisation % | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) |
+| high FP64 instruction share | unintended double precision — the usual cause is an untyped literal | [L](#pattern-l--fp64-used-unintentionally) |
+| `LDG` share low vs plain `LD` | read-only data is not taking the read-only path | [C](#pattern-c--uncoalesced-global-loads) |
+| `LDG`/`STG` both numerous and a large share | the LSU pipe is the bottleneck — vectorising the accesses reduces the count | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+| `BAR.SYNC` carries a large share of stall samples | barriers, not the work between them | [I](#pattern-i--synchronization-overhead) |
+| high SFU utilisation | transcendental-heavy — the approximate intrinsics may apply | [F](#pattern-f--compute-bound-but-not-on-tensor-cores) |
+
+### Stall reason → what it decides
+
+`WarpStateStats` breaks the stalls down by reason. Three of them route
+differently and are easy to confuse:
+
+| Stall reason | Reads as | Pattern |
+|---|---|---|
+| `stall_long_scoreboard` | waiting on **global/local memory** | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
+| `stall_short_scoreboard` | waiting on **shared memory or an MIO queue** | [H](#pattern-h--shared-memory-bank-conflicts) |
+| `stall_barrier` | waiting at a barrier for sibling warps | [I](#pattern-i--synchronization-overhead) |
+
+⚠️ **`stall_short_scoreboard` and `stall_barrier` can both indicate bank
+conflicts even when shared-memory traffic looks modest.** A conflicted access
+serialises inside the LSU, which shows up as its siblings waiting — so the
+symptom surfaces at the barrier rather than on the shared-memory counters.
+If either is high and shared traffic is low, check [H](#pattern-h--shared-memory-bank-conflicts)
+before concluding the kernel is synchronisation-bound.
+
+### Two compound signals
+
+A single reading is ambiguous in these two cases; the pair is not.
+
+| Pair | Reads as |
+|---|---|
+| tensor pipe utilisation low **and** DRAM throughput high | tensor cores are **fed too slowly**, not unused — fix the data path, not the MMA ([F](#pattern-f--compute-bound-but-not-on-tensor-cores)) |
+| `stall_barrier` high **and** `smsp__thread_inst_executed_per_inst_executed.ratio` << 32 | divergence is *lengthening* the barrier wait — the barrier is the symptom, divergence is the cause ([N](#pattern-n--warp-divergence) first, then [I](#pattern-i--synchronization-overhead)) |
+
+> ⚠️ **Host-side synchronisation does not appear anywhere in this document.**
+> `cudaDeviceSynchronize` / implicit `cudaMemcpy` stalls are *between* kernels;
+> NCU profiles one kernel at a time and cannot see them. Use Nsight Systems
+> (`nsys`) and look for CPU gaps between short kernels.
 
 ---
 
