@@ -47,6 +47,7 @@ this table is for.
 | `sm__pipe_fp64_cycles_active.avg.pct_of_peak_sustained_active` | non-zero unintentionally -> FP64 leak | [L](#pattern-l--fp64-used-unintentionally) |
 | `sm__throughput` timeline shape | sawtooth -> no overlap | [M](#pattern-m--pipeline-bubbles-no-computememory-overlap) |
 | `smsp__thread_inst_executed_per_inst_executed.ratio` | << 32 -> divergence | [N](#pattern-n--warp-divergence) |
+| **`sm__inst_executed_pipe_lsu.avg.pct_of_peak_sustained_elapsed`** | **near peak -> the LSU issue rate is the limit; vectorising the accesses cuts the instruction count** | [E](#pattern-e--latency-bound-long-scoreboard-dominated) |
 | **`gpu__time_duration.sum`** | **the denominator for ranking -- see below** | all |
 
 **Bold rows are new**; the rest already appear in the pattern bodies. See
