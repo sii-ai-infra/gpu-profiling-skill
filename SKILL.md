@@ -1,12 +1,15 @@
 ---
 name: gpu-profiling
-description: Profile CUDA kernels with Nsight Compute on H200 / sm90 and B200 / sm_100. Use when the user asks to profile a kernel, analyze its performance, diagnose bottlenecks, read an ncu report, or write an optimization plan, including when the request is phrased in a language other than English. Scope: NVIDIA GPU operators written in CUDA C++ or Triton. Not for Ascend C or Triton-Ascend kernels.
+description: "Profile CUDA kernels with Nsight Compute on H200 / sm90 and B200 / sm_100. Use when the user asks to profile a kernel, analyze its performance, diagnose bottlenecks, read an ncu report, or write an optimization plan, including when the request is phrased in a language other than English. Scope: NVIDIA GPU operators written in CUDA C++ or Triton. Not for Ascend C or Triton-Ascend kernels."
 vendor: [nvidia]
 languages: ["*"]
 architectures: [sm90, sm100]
 ---
 
 # Skill: CUDA Kernel Profiling (B200 / H200 / Nsight Compute)
+
+运行前按 [目录与依赖约定](references/runtime.md) 确认 SKILL_ROOT、TASK_ROOT、KOP_ROOT 和 KERNELWIKI_ROOT。
+
 
 **When to use:** user asks to profile a CUDA kernel, analyze its performance, find its bottlenecks, or write an optimization plan based on Nsight Compute data. Triggers include: "profile X", "为什么这个 kernel 慢", "ncu report 说...", "下一步怎么优化", "帮我看一下这份 ncu 报告".
 
@@ -24,7 +27,7 @@ Most under-performing CUDA kernels are under-performing for exactly one reason t
 
 ## Quickstart (what to do when someone says "profile this kernel")
 
-0. **Create a new run directory first** under `profile/<run_name>/` at the repo root — **one directory per run**, never reuse an existing one. Each run contains its own `harness/`, `reports/`, `analysis/`, and `REPORT.md`. This rule is mandatory in this repo. See [`references/00-directory-layout.md`](references/00-directory-layout.md).
+0. **Create a new run directory first** under `profile/<run_name>/` under TASK_ROOT — **one directory per run**, never reuse an existing one. Each run contains its own `harness/`, `reports/`, `analysis/`, and `REPORT.md`. This rule is mandatory in the task workspace. See [`references/00-directory-layout.md`](references/00-directory-layout.md).
 
 1. **Decide what you're profiling.** What inputs? Which dispatch path? What question do you want answered? If the kernel takes variable-sized inputs (variable seq lengths, variable batch sizes), you must pick specific representative shapes from the user's workload — don't profile with arbitrary inputs.
 
@@ -98,7 +101,7 @@ Most under-performing CUDA kernels are under-performing for exactly one reason t
 - **`cuda-optimization`** (repo `cuda-skill`) — the judgement layer for CUDA C++ kernels: the sixteen general principles as a routing table, the fix directions each one offers, which kernel types *legitimately* violate which principle, and which principles shift weight on Blackwell. Use it when proposing *new* kernel designs or when deciding whether a warning this skill surfaced is a real problem; use **this** skill when diagnosing an *existing* kernel from a report.
 - **`KernelWiki`** — measurements, thresholds and metric semantics. Anything of the form "what is the ideal value of X" is a fact and lives there, not here.
 
-> The three guideline documents that used to sit in this repo's root
+> The three guideline documents that used to sit in the task workspace's root
 > (`cuda-kernel-general-guidelines.md`, `blackwell-optimization-guidelines.md`,
 > `blackwell-cuda-programming.md`) were split along the same line in 2026-09:
 > **judgement → `cuda-skill`, facts → KernelWiki, diagnosis → this repo's
