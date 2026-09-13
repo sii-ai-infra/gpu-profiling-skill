@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "unit": "gpu-profiling",
+  "cases": [
+    {
+      "id": "paths",
+      "prompt": "skill 安装在 /opt/skills/gpu，任务在 /work/add。新报告应写在哪里？\n仅返回 JSON，字段 output_root 从 [\"/work/add/profile\", \"/opt/skills/gpu/profile\"] 中选择，并加 reason 解释。",
+      "should_pass": "{\"output_root\": \"/work/add/profile\", \"reason\": \"产物跟随 TASK_ROOT，脚本从 SKILL_ROOT 读取。\"}",
+      "review_rubric": [
+        "产物跟随 TASK_ROOT，脚本从 SKILL_ROOT 读取。"
+      ],
+      "assert": [
+        {
+          "type": "json_fields",
+          "fields": {
+            "output_root": "/work/add/profile"
+          },
+          "must_fail_on": "{\"output_root\": \"/opt/skills/gpu/profile\", \"reason\": \"产物跟随 TASK_ROOT，脚本从 SKILL_ROOT 读取。\"}"
+        }
+      ]
+    },
+    {
+      "id": "offline-report",
+      "prompt": "用户只要求解析已有 ncu-rep，没有要求重采。是否必须启动新的 GPU 任务？\n仅返回 JSON，字段 launch_required 从 [false, true] 中选择，并加 reason 解释。",
+      "should_pass": "{\"launch_required\": false, \"reason\": \"先用离线报告解析能力；只有缺失必要证据才评估重采。\"}",
+      "review_rubric": [
+        "先用离线报告解析能力；只有缺失必要证据才评估重采。"
+      ],
+      "assert": [
+        {
+          "type": "json_fields",
+          "fields": {
+            "launch_required": false
+          },
+          "must_fail_on": "{\"launch_required\": true, \"reason\": \"先用离线报告解析能力；只有缺失必要证据才评估重采。\"}"
+        }
+      ]
+    },
+    {
+      "id": "low-bandwidth",
+      "prompt": "DRAM 吞吐占峰值很低，但 long_scoreboard 等待高。能否单凭吞吐低断言 DRAM 带宽是瓶颈？\n仅返回 JSON，字段 proven_bandwidth_bound 从 [false, true] 中选择，并加 reason 解释。",
+      "should_pass": "{\"proven_bandwidth_bound\": false, \"reason\": \"区分延迟、访存依赖、占用和带宽饱和；结合指标与对照实验。\"}",
+      "review_rubric": [
+        "区分延迟、访存依赖、占用和带宽饱和；结合指标与对照实验。"
+      ],
+      "assert": [
+        {
+          "type": "json_fields",
+          "fields": {
+            "proven_bandwidth_bound": false
+          },
+          "must_fail_on": "{\"proven_bandwidth_bound\": true, \"reason\": \"区分延迟、访存依赖、占用和带宽饱和；结合指标与对照实验。\"}"
+        }
+      ]
+    }
+  ]
+}

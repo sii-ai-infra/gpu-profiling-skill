@@ -1,15 +1,15 @@
 # Profile Directory Layout & Naming
 
-**Read this first, before any collection.** Bad directory layout is the single most common cause of mixing results from different runs, overwriting prior profiles, or losing track of which `.ncu-rep` belongs to which kernel version. The rules below are non-negotiable for work in this repo.
+**Read this first, before any collection.** Bad directory layout is the single most common cause of mixing results from different runs, overwriting prior profiles, or losing track of which `.ncu-rep` belongs to which kernel version. The rules below are non-negotiable for work in the task workspace.
 
 ---
 
 ## Top-level rule
 
-**All profiling artifacts live under a single `profile/` directory at the repo root.** Never scatter `.ncu-rep` files across random locations. Never put profile artifacts under `solution/`, `src/`, `scripts/`, `references/`, or other source directories — `scripts/` holds this skill's own helpers and templates, not your run output.
+**All profiling artifacts live under a single `profile/` directory under TASK_ROOT.** Never scatter `.ncu-rep` files across random locations. Never put profile artifacts under `solution/`, `src/`, `scripts/`, `references/`, or other source directories — `scripts/` holds this skill's own helpers and templates, not your run output.
 
 ```
-<repo_root>/
+<TASK_ROOT>/
 ├── profile/                        ← everything profiling-related lives here
 │   ├── <run_1>/
 │   ├── <run_2>/
